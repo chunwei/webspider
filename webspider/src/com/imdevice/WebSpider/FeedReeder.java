@@ -16,9 +16,10 @@ public class FeedReeder {
 	 */
 	public static void main(String[] args) {
 		String url="";
-		url="http://www.36kr.com/feed";
+		//url="http://www.36kr.com/feed";
 		//url="http://www.ifanr.com/feed";
 		//url="http://www.cnbeta.com/backend.php";
+		url="http://cn.engadget.com/rss.xml";
 		try {
             URL feedUrl = new URL(url);
 
