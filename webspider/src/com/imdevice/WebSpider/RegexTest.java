@@ -7,6 +7,8 @@ import java.util.regex.PatternSyntaxException;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 public class RegexTest {
 
@@ -14,10 +16,15 @@ public class RegexTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		String url="http://www.leiphone.com/1130-ce6093-wechat.html";
+		String url="";
+		//url="http://www.leiphone.com/1130-ce6093-wechat.html";
+		url="http://digi.tech.qq.com/a/20121207/000491.htm";
 		try {
 			Document doc=Jsoup.connect(url).get();
-			
+			Elements tables=doc.getElementsByTag("table");
+			for(Element table:tables){
+				
+			}
 			//String punctuation="，、。：；！？‘’“”,;!\'\"";
 			//String regex="["+punctuation+"][^"+punctuation+"]{5,}["+punctuation+"]";
 			String regex="((<(?i)(li|p|span)[^>]*>)?\\s*<a[^>]*>.*</a>\\s*(</(?i)(li|p|span)>)?\\s*){2,}";

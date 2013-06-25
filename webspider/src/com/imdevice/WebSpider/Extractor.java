@@ -15,11 +15,15 @@ public class Extractor {
 
     public static final String ATTR_CONTENT_SCORE = "contentScore";
     public static final String DOM_DEFAULT_CHARSET = "utf-8";
+    public static final String bonus="(?i)(^|\\s)(post|hentry|entry|article)[-]?(content|text|body)(\\s|$)";
+    public static final String deduction="(?i)comment|meta|footer|footnote|subcontent|title";
     protected Document doc = null;
     private ArrayList<Element> scoredNodes = new ArrayList<Element>();
     private ArrayList<Element> matchedNodes = new ArrayList<Element>();
     protected String url="";
     protected String chart="";
+    public String title="";
+    public String clearContent="";
     public double factor=0.98;
     public boolean debug=false;
     
@@ -60,11 +64,20 @@ public class Extractor {
         //String[] junkTags = {"style", "form", "iframe", "script", "button", "input", "textarea"};
         //for(String tagName:junkTags)element.getElementsByTag(tagName).remove();
     	// 需要删除的标签
-        element.select("style,form,iframe,script,button,input,textarea,header,footer,hr,noscript").remove();
+        element.select("style,form,iframe,script,button,input,textarea,header,footer,hr,noscript,nav").remove();
         //删除内容块内的噪音干扰
-        String noise="(?i)[-_]?(googleAd|dig|jiathis|author|ignore|comment|reply|recommend|related|meta|copyright|header|footer|footnote|sns|share|social|tag|nav|prenext|profile|button|btn)[-_]?";
+        String noise="(?i)[-_]?(googleAd|dig|jiathis|author|ignore|comment|reply|recommend|related|meta|copyright|header|footer|footnote|sns|share|social|tag|nav|prenext|profile|button|btn|filed)[-_]?";
         String noiseQuery="[class~="+noise+"],[id~="+noise+"]";
-        element.select(noiseQuery).remove();
+        Elements noiseEs=element.select(noiseQuery);
+        for(Element ne:noiseEs){
+        	if(!ne.tagName().equals("article")){
+        		if(!ne.id().matches(bonus)){
+        			if(!ne.className().matches(bonus)){
+        				ne.remove();        				
+        			}
+        		}
+        	}
+        }
         element.select("[href*=javascript:]").remove();
         // 需要删除的属性
         String[] junkAttrs = {"style", "onload", "onclick", "onmouseover", "align", "border", "margin"};
@@ -128,8 +141,7 @@ public class Extractor {
     	int ss=0;
     	String className=p.className();
 		String id=p.id();
-		String bonus="(?i)(^|\\s)(post|hentry|entry|article)[-]?(content|text|body)(\\s|$)";
-		String deduction="(?i)comment|meta|footer|footnote|subcontent|title";
+		
 		if(className.matches(deduction)){
 			ss-=50;
 		}else if(className.matches(bonus)){
@@ -162,13 +174,17 @@ public class Extractor {
     	Elements articles=body.getElementsByTag("<article>");
     	if(!articles.isEmpty())body=articles.first();
     	Element topBox=null;
+/*    	Elements imgs=body.select("img");
+		for(Element img:imgs){
+			matchedNodes.add(img.parent());
+		}*/
     	String punctuation="，、。；！？‘’“”,\\.;!\'\"";
     	String regex="["+punctuation+"][^"+punctuation+"]{5,}["+punctuation+"]";
     	Elements allParagraphs=body.getElementsMatchingOwnText(regex);//body.getElementsByTag("p");
     	for(Element p:allParagraphs){
     		String tag_p=p.tagName().toLowerCase();
     		if(debug)p.addClass("matched");
-    		if(tag_p.matches("a|h1|h2|h3"))continue;
+    		if(tag_p.matches("a"))continue;
     		matchedNodes.add(p);
     		int cs=getContentScore(p);
     		Element sp=/*p.parent();*/tag_p.equals("div")?p:p.parent();   
@@ -230,6 +246,23 @@ public class Extractor {
 */
     	if(debug)contentBox.addClass("top-2-parent");
     	return contentBox;
+    }
+    public void findTitle(){
+    	title=doc.title();
+    	Elements hs=doc.body().select("h1,h2,h3,h4,h5");
+    	boolean found=false;
+    	for(Element h:hs){
+    		String ht=h.text();
+    		if(ht.length()>0&&title.indexOf(ht)>-1){
+    			title=ht;found=true;
+    			h.remove();
+    			break;
+    		}
+    	}
+    	if(!found&&title.length()>0)title=title.split("[-_|]")[0].trim();    	
+    }
+    public String getTitle(){
+    	return title;
     }
     public Element getTopBox1(Document doc){
     	Element body=preClean(doc.body());
@@ -356,35 +389,32 @@ public class Extractor {
     	chart+="</script>";
     	return chart;
     }
-    public String getContent(){
-    	if(url.length()<5)return "url not specfied!";
-    	String content="";
+    public void extract(){
+    	if(url.length()<5)return;
     	try {
-			this.doc=Jsoup.connect(url).get();
-			content+="<h2>"+this.doc.title().split("[-_|]")[0].trim()+"</h2>\n";
-			content+=clean(getContentBox(getTopBox(doc)));
-			if(debug)content=doc.body().html()+drawChart();
-		} catch (IOException e) {
-			content=e.getLocalizedMessage();
-			e.printStackTrace();
+			doc=Jsoup.connect(url).get();
+			findTitle();			
+			clearContent=clean(getContentBox(getTopBox(doc)));
+			if(debug)clearContent=doc.body().html()+drawChart();
 		} catch (Exception e) {
-			content=e.getMessage();
 			e.printStackTrace();
-		}	
-    	return content;
+		}
+    }
+    public String getContent(){
+    	return debug?doc.body().html()+drawChart():clearContent;
+
     }
     public String getContent(String html){
-    	String content="";
+    	String result="";
     	try {
-			this.doc=Jsoup.parseBodyFragment(html);
-			content+="<h2>"+this.doc.title().split("[-_|]")[0].trim()+"</h2>\n";
-			content+=clean(getContentBox(getTopBox(doc)));
-			if(debug)content=doc.body().html()+drawChart();
+    		doc=Jsoup.parseBodyFragment(html);
+    		result=clean(getContentBox(getTopBox(doc)));
+			if(debug)result=doc.body().html()+drawChart();
 		} catch (Exception e) {
-			content=e.getMessage();
+			result=e.getMessage();
 			e.printStackTrace();
 		}	
-    	return content;
+    	return result;
     }
     /**
 	 * @param args
@@ -415,11 +445,15 @@ public class Extractor {
 		//url="http://www.cnbeta.com/articles/216237.htm";
 		//url="http://www.huxiu.com/article/6588/1.html";
 		//url="http://www.jpbeta.net/2012/12/ique-3ds-xl-1-2012-1201/";
-		url="http://www.cnbeta.com/articles/216970.htm";
-		Extractor extrator=new Extractor(url);
-		extrator.debug=true;
-		System.out.println(extrator.getContent());
-		//System.out.println(extrator.drawChart());
+		//url="http://www.cnbeta.com/articles/216970.htm";
+		//url="http://digi.tech.qq.com/a/20121207/000491.htm";
+		url="http://www.leiphone.com/0501-tech-media.html";
+		Extractor extractor=new Extractor(url);
+		extractor.extract();
+		//extractor.debug=false;//default 'false'
+		System.out.println(extractor.getTitle());
+		System.out.println(extractor.getContent());
+		//System.out.println(extractor.drawChart());
 	}
 
 }
