@@ -50,6 +50,7 @@ public class FeedReeder {
             	  System.out.println(extractor.getContent(contents.get(0).getValue()));
               }else{
             	  extractor.url=entry.getLink();
+            	  //I changed getContent() method at home,must call extract() first
             	  System.out.println(extractor.getContent());
               }
               System.out.println("</div>");
